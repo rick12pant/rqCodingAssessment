@@ -121,9 +121,6 @@ void RunServer() {
     std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
     std::cout << "Server listening on " << socket_address << std::endl;
 
-    // cleanup old socket file
-    unlink("/tmp/numbers-daemon.sock");
-
     server->Wait();
 }
 
