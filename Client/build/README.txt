@@ -1,0 +1,1 @@
+The build directory is where you will execute "cmake .. && make"
