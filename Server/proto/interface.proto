@@ -1,0 +1,44 @@
+// interface.proto
+syntax = "proto3";
+
+package numbermgmt;
+
+message Timestamp {
+  int64 unix_seconds = 1;
+}
+
+message NumberEntry {
+  uint64 number       = 1;
+  Timestamp timestamp = 2;
+}
+
+message OperationResult {
+  bool success      = 1;
+  string message    = 2;
+  NumberEntry entry = 3;  // filled on success for insert/delete
+}
+
+message NumberListResponse {
+  repeated NumberEntry entries = 1;
+  int32 count                  = 2;
+  string message               = 3;
+}
+
+message InsertRequest {
+  uint64 number = 1;
+}
+
+message DeleteRequest {
+  uint64 number = 1;
+}
+
+message ListRequest {}
+
+message ClearRequest {}
+
+service NumberManagement {
+  rpc Insert  (InsertRequest)   returns (OperationResult) {}
+  rpc Delete  (DeleteRequest)   returns (OperationResult) {}
+  rpc List    (ListRequest)     returns (NumberListResponse) {}
+  rpc Clear   (ClearRequest)    returns (OperationResult) {}
+}
