@@ -1,4 +1,4 @@
-// numbers.proto
+// interface.proto
 syntax = "proto3";
 
 package numbermgmt;

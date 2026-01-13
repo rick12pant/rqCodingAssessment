@@ -13,12 +13,23 @@
 #include <memory>
 #include <string>
 
+/**
+ * @brief Implementation of the NumberManagement gRPC service
+ *
+ * @details Thread-safe in-memory storage of uint64_t numbers with their insertion timestamps.
+ *          Uses std::map + std::mutex for synchronization.
+ */
 class NumberServiceImpl final : public numbermgmt::NumberManagement::Service 
 {
 private:
-    std::map<uint64_t, time_t> numbers_;  // number -> insertion timestamp
-    std::mutex mutex_;
+    std::map<uint64_t, time_t> numbers_;  // number -> unix insertion timestamp
+    std::mutex mutex_;                    // Protects all access to numbers_
 
+    /**
+     * @brief Helper to create a protobuf Timestamp from time_t
+     * @param t Unix timestamp
+     * @return Populated Timestamp message
+     */
     numbermgmt::Timestamp make_timestamp(time_t t) {
         numbermgmt::Timestamp ts;
         ts.set_unix_seconds(static_cast<int64_t>(t));
@@ -26,6 +37,13 @@ private:
     }
 
 public:
+    /**
+     * @brief Insert a number if it doesn't already exist
+     * @param context Server context
+     * @param request Contains the number to insert
+     * @param response Operational result response
+     * @return status
+     */
     ::grpc::Status Insert(::grpc::ServerContext* context,
                           const ::numbermgmt::InsertRequest* request,
                           ::numbermgmt::OperationResult* response)
@@ -56,9 +74,15 @@ public:
         return grpc::Status::OK;
     }
 
-
+    /**
+     * @brief Delete a number if it exists
+     * @param context Server context
+     * @param request Contains the number to delete
+     * @param response Operational result response
+     * @return status
+     */
     ::grpc::Status Delete(::grpc::ServerContext* context,
-                          const ::numbermgmt::InsertRequest* request,
+                          const ::numbermgmt::DeleteRequest* request,
                           ::numbermgmt::OperationResult* response)    
     {
         std::cout << "recieved delete request" << std::endl;
@@ -76,6 +100,13 @@ public:
         return grpc::Status::OK;
     }
 
+    /**
+     * @brief Return all stored numbers sorted by value with timestamps
+     * @param context Server context
+     * @param request Empty request
+     * @param response Number List Response
+     * @return status
+     */
     ::grpc::Status List(::grpc::ServerContext* context,
                         const ::numbermgmt::ListRequest* request,
                         ::numbermgmt::NumberListResponse* response)
@@ -93,6 +124,13 @@ public:
         return grpc::Status::OK;
     }
 
+    /**
+     * @brief Remove all stored numbers
+     * @param context Server context
+     * @param request Empty request
+     * @param response Operational result response
+     * @return status
+     */
     ::grpc::Status Clear(::grpc::ServerContext* context,
                          const ::numbermgmt::ClearRequest* request,
                          ::numbermgmt::OperationResult* response)
@@ -109,6 +147,11 @@ public:
     }
 };
 
+/**
+ * @brief Start the gRPC server on an abstract Unix domain socket
+ *
+ * @details: Listens on: unix-abstract:numbers-daemon.sock
+ */
 void RunServer() {
     std::string socket_address = "unix-abstract:numbers-daemon.sock";
 

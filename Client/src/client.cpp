@@ -5,12 +5,38 @@
 #include <string>
 
 #include "proto/interface.grpc.pb.h"
+#include "proto/interface.pb.h"
 
+/**
+ * @class NumberClient
+ * @brief Client for interacting with a gRPC-based number management service.
+ *
+ * @details This class provides a simple interface to perform CRUD-like operations
+ *          (insert, delete, list, clear) on a remote number management service
+ *          via gRPC.
+ *
+ * @note All operations are synchronous (blocking).
+ * @note The class assumes the existence of the generated gRPC code from
+ *       the `numbermgmt` proto definition (NumberManagement service).
+ */
 class NumberClient {
 public:
+    /**
+     * @brief Constructs a NumberClient with the given gRPC channel.
+     *
+     * @param channel Shared pointer to a gRPC channel
+     */
     NumberClient(std::shared_ptr<grpc::Channel> channel)
         : stub_(numbermgmt::NumberManagement::NewStub(channel)) {}
 
+    /**
+     * @brief Inserts a number into the remote storage.
+     *
+     * @details Sends an InsertRequest to the server and prints the result.
+     *          On success, prints the inserted entry with its timestamp.
+     *
+     * @param number The 64-bit unsigned integer to insert
+     */
     void Insert(uint64_t number) {
         numbermgmt::InsertRequest request;
         request.set_number(number);
@@ -31,10 +57,20 @@ public:
                 std::cout << "Failed: " << response.message() << "\n";
             }
         } else {
-            std::cout << "RPC failed: " << status.error_message() << "\n";
+            std::cout << "RPC failed:\n"
+                      << "  code    = " << status.error_code() << "\n"
+                      << "  message = " << status.error_message() << "\n"
+                      << "  details = " << status.error_details() << "\n";
         }
     }
 
+    /**
+     * @brief Deletes a specific number from the remote storage.
+     *
+     * @details Sends a DeleteRequest to the server and prints the result message.
+     *
+     * @param number The 64-bit unsigned integer to delete
+     */
     void Delete(uint64_t number) {
         numbermgmt::DeleteRequest request;
         request.set_number(number);
@@ -47,10 +83,22 @@ public:
         if (status.ok()) {
             std::cout << response.message() << "\n";
         } else {
-            std::cout << "RPC failed: " << status.error_message() << "\n";
+            std::cout << "RPC failed:\n"
+                      << "  code    = " << status.error_code() << "\n"
+                      << "  message = " << status.error_message() << "\n"
+                      << "  details = " << status.error_details() << "\n";
         }
     }
 
+    /**
+     * @brief Retrieves and prints all stored numbers with their insertion timestamps.
+     *
+     * @details Sends a ListRequest and prints the server response message followed
+     * by all stored entries in the format:
+     * number (unix_timestamp)
+     *
+     * @note The list is printed in the order returned by the server.
+     */
     void List() {
         numbermgmt::ListRequest request;
         numbermgmt::NumberListResponse response;
@@ -65,10 +113,18 @@ public:
                           << "  (" << entry.timestamp().unix_seconds() << ")\n";
             }
         } else {
-            std::cout << "RPC failed: " << status.error_message() << "\n";
+            std::cout << "RPC failed:\n"
+                      << "  code    = " << status.error_code() << "\n"
+                      << "  message = " << status.error_message() << "\n"
+                      << "  details = " << status.error_details() << "\n";
         }
     }
 
+    /**
+     * @brief Removes all numbers from the remote storage (clear operation).
+     *
+     * @details Sends a ClearRequest and prints the confirmation or error message.
+     */
     void Clear() {
         numbermgmt::ClearRequest request;
         numbermgmt::OperationResult response;
@@ -79,7 +135,10 @@ public:
         if (status.ok()) {
             std::cout << response.message() << "\n";
         } else {
-            std::cout << "RPC failed: " << status.error_message() << "\n";
+            std::cout << "RPC failed:\n"
+                      << "  code    = " << status.error_code() << "\n"
+                      << "  message = " << status.error_message() << "\n"
+                      << "  details = " << status.error_details() << "\n";
         }
     }
 
@@ -87,11 +146,40 @@ private:
     std::unique_ptr<numbermgmt::NumberManagement::Stub> stub_;
 };
 
+/**
+ * @brief Counts whitespace-separated words in a string
+ * @param str Input string
+ * @return Number of words (0 for empty or whitespace-only input)
+ */
 unsigned int countWordsAlg(const std::string& str) {
     std::istringstream stream(str);
     // Use std::distance to count elements between the beginning and end iterators
     return std::distance(std::istream_iterator<std::string>(stream), std::istream_iterator<std::string>());
 }
+
+/**
+ * @brief Prints the help/usage message for the gRPC Number Manager CLI.
+ *
+ * @details Displays a formatted, human-readable summary of available commands,
+ *          syntax examples, and basic rules.
+ */
+void print_help() {
+    std::cout << R"(
+    gRPC Number Manager CLI
+    ══════════════════════
+    Commands:
+    insert <number>     Add a positive integer           e.g. insert 2025
+    delete <number>     Remove a number if it exists     e.g. delete 100
+    list                Show all numbers (sorted) with timestamps
+    clear               Delete everything
+    help                Show this help message
+    exit                Exit the program
+
+    Rules:
+      - Numbers must be positive integers greater than or equal to 2
+      - Commands are case-sensitive
+    )" << std::endl;
+} 
 
 int main() 
 {
@@ -100,14 +188,7 @@ int main()
 
     NumberClient client(channel);
 
-    std::cout << "gRPC Number Manager CLI\n"
-                 "Usage:\n"
-                 "    command [options]\n\n"
-                 "Available Commands\n"
-                 "    insert <positive integer>     Sends a number from the CLI to the backend server instance\n"
-                 "    delete <positive integer>     Deletes the specified number from the backend server\n"
-                 "    list                          Prints all numbers to console, organized smallest to largest, with their timestamp\n"
-                 "    clear                         Deletes all stored entries\n\n";
+    print_help();
 
     std::string line;
     while (std::getline(std::cin, line)) {
@@ -170,6 +251,9 @@ int main()
             else{
                 client.Clear();
             }
+        }
+        else if (cmd == "help") {
+            print_help();
         }
         else {
             std::cout << "Unknown command\n";
